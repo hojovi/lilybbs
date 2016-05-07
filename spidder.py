@@ -1,6 +1,6 @@
 import urllib.request
 import time
-from base import prefixes,category_index,boards,boards_chinese_index
+from base import prefixes,category_index,boards,boards_chinese_index,big_category
 #pip install BeautifulSoup4
 #pip install html5lib
 from bs4 import BeautifulSoup
@@ -23,6 +23,8 @@ def crawl(url):
     return response.read().decode('gbk')
 
 #十大
+#返回list[list...]，按名次排序
+#分别是：版块id，帖子url，帖子题目，发帖人，回复次数
 def top10():
     result=crawl("http://bbs.nju.edu.cn/bbstop10")
     
@@ -32,15 +34,12 @@ def top10():
     tr=table.find_all('tr')
     for i in range(1,len(tr)):
         tds=tr[i].find_all('td')
-        cur={}
-        cur['rand']=int(tds[0][1])
-        cur['board_url']=td[1].a['href']
-        cur['board_name']=td[1].a.string
-        cur['post_href']=td[2].a['href']
-        cur['post_title']=td[2].a.string
-        cur['sender_url']=td[3].a['href']
-        cur['sender_nickname']=td[3].a.string
-        cur['reply_count']=td[4].string
+        cur=[]
+        cur.append(td[1].a.string)
+        cur.append(td[2].a['href'])
+        cur.append(td[2].a.string)
+        cur.append(td[3].a.string)
+        cur.append(td[4].string)
         top10.append(cur)
     return top10
 
@@ -49,49 +48,46 @@ def top10():
 
 
 #各区热点
+#返回dict，key是大分类
+#value是list[list...]，每项保存的分别是：帖子url，帖子标题，所在版块
 def topall():
     result=crawl("http://bbs.nju.edu.cn/bbstopall")
     
-    topall=[]
+    topall={}
     soup=BeautifulSoup(result,'html5lib')
     table=soup.table
-    cur={}
+
+    ##大分类的索引
+    index=-1
+    
     for tr in table.find_all('tr'):
-        print(tr)
         if not tr.td.has_attr('colspan') and tr.td.text.strip()=='':
             continue
         elif tr.td.has_attr('colspan') and tr.td['colspan']=='2':
-            if len(cur)!=0:
-                topall.append(cur)
-            cur={}
-            category_url=tr.td.img['onclick'][10:]
-            category_url=category_url[:len(category_url)-1]
-            cur['category_url']=category_url
-            cur['category_img_src']=tr.td.img['src']
-            cur['content']=[]
+            index+=1
+            topall[big_category[index]]=[]
+            cur=topall[big_category[index]]
         else:
             for td in tr.find_all('td'):
-                post={}
+                post=[]
                 a=td.find_all('a')
-                text=td.text
-                post['post_url']=a[0]['href']
-                post['post_title']=text[:text.find('[')]
-                post['board_url']=a[1]['href']
-                post['board_name']=text[text.find('[')+1:len(text)-1]
-                cur['content'].append(post)
-    topall.append(cur)
+                post.append(a[0]['href'])
+                post.append(a[0].string.strip())
+                post.append(a[1].string)
+                cur.append(post)
+                
     return topall
 
-
+print(topall())
 
 
 
 #本函数仅返回默认页，需要从默认页中拿到最大序号，本版域名，版主，版主寄语等信息
 #返回None，表明网页做过更新，此函数失效
 #返回的dict有以下信息：本版域名，版主id，版内在线，版主寄语，当前置顶帖
-def board_base_info(url):
+def board_base_info(board_id):
     board={}
-    result=crawl(url)
+    result=crawl(prefixes['版块']%board_id)
 
     soup=BeautifulSoup(result,'html5lib')
     tables=soup.find_all('table')
@@ -117,6 +113,19 @@ def board_base_info(url):
     #处理第二个表
     board['版主寄语']=tables[2].tr.td.font.string
 
+    return board
+
+
+#置顶帖
+def board_top(board_id):
+    result=crawl(prefixes['版块']%board_id)
+
+    soup=BeautifulSoup(result,'html5lib')
+    tables=soup.find_all('table')
+    if len(tables)!=4:
+        print('网页已经做过更新，本程序无法解析！')
+        return None
+
     #处理第三个表，只要置顶帖
     posts=[]
     table3=tables[3]
@@ -132,21 +141,18 @@ def board_base_info(url):
         cur['标题url']=tds[5].a['href']
         cur['人气']=tds[6].font.string
         posts.append(cur)
-    board['置顶帖']=posts
 
-    return board
-
-
-
+    return posts
 
 
 
 #按序号从大到小排序，输出到path文件
-#分别为序号，作者，日期，标题，标题url，人气
+#分别为序号，作者，日期，标题，标题url(没有加domain前缀)，人气
 def board(board_id,path):
     file=open(path,'w',encoding='utf8')
     url=prefixes['版块']%board_id
-    
+
+    #网站有防dos措施，所以每次间隔一秒
     while True:
         result=crawl(url)
         soup=BeautifulSoup(result,'html5lib')
@@ -177,9 +183,6 @@ def board(board_id,path):
         url=prefixes['板块页面']%(board_id,int(cur[0])-20)
         time.sleep(1)
     file.close()
-
-
-board('NJUExpress','NJUExpress.txt')
 
 
 #所有讨论区，只是为了得到所有版块，现在所有版块的信息已经放在base.py中了

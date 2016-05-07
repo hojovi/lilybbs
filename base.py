@@ -12,8 +12,13 @@ prefixes={
     '精华区查询':'http://bbs.nju.edu.cn/bbsafind?board=%s',   #精华区查询
     '跳转到第几篇':'http://bbs.nju.edu.cn/bbsdoc?board=%s',    #跳转到第几篇，用post提交，表单中要有name=start的text
     '用户':'http://bbs.nju.edu.cn/bbsqry?userid=%s',  #用户
-    '板块页面':'http://bbs.nju.edu.cn/bbsdoc?board=%s&start=%d&type=doc'    #妈的，贼气，向这个网址提交
+    '板块页面':'http://bbs.nju.edu.cn/bbsdoc?board=%s&start=%d&type=doc',    #妈的，贼气，向这个网址提交
+    '类别图片':'http://bbs.nju.edu.cn/images/fb%d.gif'  #每个类别都有对应的图片，对应的url需要这个类别的index
     }
+
+##大分类，这是有顺序的，查看http://bbs.nju.edu.cn/bbstopall，可以发现这些大分类是固定的
+big_category=('本站系统','南京大学','乡情校谊','电脑技术','学术科学','文化艺术',
+              '体育娱乐','感性休闲','新闻信息','百合广角','校务信箱','社团群体')
 
 #每个分类包括不同版块，每个分类有index，有些分类的index相同
 category_index={
