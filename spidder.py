@@ -1,9 +1,19 @@
+#脚本文件函数大致说明
+#top10()，全站十大
+#topall()，各区热点
+#board_base_info(board_id)，版块基本信息
+#board_hot(board_id),版块置顶帖
+#board(board_id,filename,until)，版块所有帖子，由于帖子数量可能很多，所以要输出到文件中，直到序号为until，返回当前最大序号
+
+#board_group()，所有版块，用不到
+
 import urllib.request
 import time
 from base import prefixes,category_index,boards,boards_chinese_index,big_category
 #pip install BeautifulSoup4
 #pip install html5lib
 from bs4 import BeautifulSoup
+import datetime
 
 #模拟浏览器
 keys={
@@ -22,6 +32,13 @@ def crawl(url):
     response=urllib.request.urlopen(request)
     return response.read().decode('gbk')
 
+#日期帮助函数，只针对小百合的日期显示
+#小百合的日期并没有包含年份，要查看年份需要点进帖子中看
+def parseDatetime(string,year):
+    c=datetime.datetime.strptime(string,'%b  %d %H:%M')
+    c.replace(year=year)
+    return c
+
 #十大
 #返回list[list...]，按名次排序
 #分别是：版块id，帖子url，帖子题目，发帖人，回复次数
@@ -29,20 +46,19 @@ def top10():
     result=crawl("http://bbs.nju.edu.cn/bbstop10")
     
     top10=[]
-    soup=BeautifulSoup(result)
+    soup=BeautifulSoup(result,'html5lib')
     table=soup.table
     tr=table.find_all('tr')
     for i in range(1,len(tr)):
         tds=tr[i].find_all('td')
         cur=[]
-        cur.append(td[1].a.string)
-        cur.append(td[2].a['href'])
-        cur.append(td[2].a.string)
-        cur.append(td[3].a.string)
-        cur.append(td[4].string)
+        cur.append(tds[1].a.string)
+        cur.append(tds[2].a['href'])
+        cur.append(tds[2].a.string.strip())
+        cur.append(tds[3].a.string.strip())
+        cur.append(tds[4].string.strip())
         top10.append(cur)
     return top10
-
 
 
 
@@ -78,7 +94,6 @@ def topall():
                 
     return topall
 
-print(topall())
 
 
 
@@ -116,8 +131,10 @@ def board_base_info(board_id):
     return board
 
 
-#置顶帖
-def board_top(board_id):
+#版块的置顶帖
+#返回list[list...]
+#每项分别是：作者，日期，标题，帖子url，人气
+def board_hot(board_id):
     result=crawl(prefixes['版块']%board_id)
 
     soup=BeautifulSoup(result,'html5lib')
@@ -131,15 +148,15 @@ def board_top(board_id):
     table3=tables[3]
     trs=table3.find_all('tr')
     for i in range(1,len(trs)):
-        cur={}
+        cur=[]
         tds=trs[i].find_all('td')
         if tds[0].string is not None:
             break
-        cur['作者']=tds[2].a.string
-        cur['日期']=tds[4].nobr.string
-        cur['标题']=tds[5].a.string
-        cur['标题url']=tds[5].a['href']
-        cur['人气']=tds[6].font.string
+        cur.append(tds[2].a.string)
+        cur.append(tds[4].nobr.string)
+        cur.append(tds[5].a.string[2:].strip())
+        cur.append(tds[5].a['href'])
+        cur.append(tds[6].font.string)
         posts.append(cur)
 
     return posts
@@ -148,10 +165,14 @@ def board_top(board_id):
 
 #按序号从大到小排序，输出到path文件
 #分别为序号，作者，日期，标题，标题url(没有加domain前缀)，人气
-def board(board_id,path):
+def board(board_id,path,until):
+    if until<0:
+        print(str(until)+' 为负！！')
+        return -1
     file=open(path,'w',encoding='utf8')
     url=prefixes['版块']%board_id
 
+    max_num=-1
     #网站有防dos措施，所以每次间隔一秒
     while True:
         result=crawl(url)
@@ -165,24 +186,29 @@ def board(board_id,path):
             tds=trs[i].find_all('td')
             if tds[0].string is None:
                 break
-            #到了第一篇文章
-            if tds[0].string=='1':
-                file.close()
-                return
             cur=[]
+            num=int(tds[0].string)
+            if num<until:
+                return max_num
+            if max_num==-1:
+                max_num=num
             cur.append(tds[0].string)
             cur.append(tds[2].a.string)
             cur.append(tds[4].nobr.string)
-            cur.append(tds[5].a.string)
+            cur.append(tds[5].a.string.strip())
             cur.append(tds[5].a['href'])
             cur.append(tds[6].font.string)
             file.write(','.join(cur))
             file.write('\n')
 
         #之前在页面内找上一页，但是现在知道每一页只有20条帖子（除置顶帖），访问的是有规律的地址，所以把当前页面帖子最小序号减20就可以得到完全不同的新页面
-        url=prefixes['板块页面']%(board_id,int(cur[0])-20)
-        time.sleep(1)
+        if num<=0:
+            return max_num
+        #页面显示序号为1，其实真正的序号为0，就像这样，所以要减21
+        url=prefixes['板块页面']%(board_id,num-21)
+        time.sleep(0.5)
     file.close()
+    return max_num
 
 
 #所有讨论区，只是为了得到所有版块，现在所有版块的信息已经放在base.py中了
