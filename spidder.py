@@ -3,17 +3,18 @@
 #topall()，各区热点
 #board_base_info(board_id)，版块基本信息
 #board_hot(board_id),版块置顶帖
-#board(board_id,filename,until)，版块所有帖子，由于帖子数量可能很多，所以要输出到文件中，直到序号为until，返回当前最大序号
+#board(board_id,filename,date)，版块所有帖子，由于帖子数量可能很多，所以要输出到文件中，从start开始，返回当前最大序号
 
 #board_group()，所有版块，用不到
 
 import urllib.request
 import time
-from base import prefixes,category_index,boards,boards_chinese_index,big_category
+from base import prefixes,big_category
 #pip install BeautifulSoup4
 #pip install html5lib
 from bs4 import BeautifulSoup
 import datetime
+import re
 
 #模拟浏览器
 keys={
@@ -30,20 +31,14 @@ def crawl(url):
     request.add_header("User-Agent",keys["User-Agent"])
     request.add_header("Content-Type","text/html; charset=gb2312")
     response=urllib.request.urlopen(request)
-    return response.read().decode('gbk')
+    return response.read().decode(encoding='gb18030',errors='ignore')
 
-#日期帮助函数，只针对小百合的日期显示
-#小百合的日期并没有包含年份，要查看年份需要点进帖子中看
-def parseDatetime(string,year):
-    c=datetime.datetime.strptime(string,'%b  %d %H:%M')
-    c.replace(year=year)
-    return c
 
 #十大
 #返回list[list...]，按名次排序
 #分别是：版块id，帖子url，帖子题目，发帖人，回复次数
 def top10():
-    result=crawl("http://bbs.nju.edu.cn/bbstop10")
+    result=crawl(domain+"bbstop10")
     
     top10=[]
     soup=BeautifulSoup(result,'html5lib')
@@ -67,7 +62,7 @@ def top10():
 #返回dict，key是大分类
 #value是list[list...]，每项保存的分别是：帖子url，帖子标题，所在版块
 def topall():
-    result=crawl("http://bbs.nju.edu.cn/bbstopall")
+    result=crawl(domain+"bbstopall")
     
     topall={}
     soup=BeautifulSoup(result,'html5lib')
@@ -107,7 +102,7 @@ def board_base_info(board_id):
     soup=BeautifulSoup(result,'html5lib')
     tables=soup.find_all('table')
     if len(tables)!=4:
-        print('网页已经做过更新，本程序无法解析！')
+        print('版块没有更多信息')
         return None
     
     #处理第一个表
@@ -145,7 +140,7 @@ def board_hot(board_id):
 
     #处理第三个表，只要置顶帖
     posts=[]
-    table3=tables[3]
+    table3=tables[len(tables)-1]
     trs=table3.find_all('tr')
     for i in range(1,len(trs)):
         cur=[]
@@ -162,24 +157,37 @@ def board_hot(board_id):
     return posts
 
 
+#ExcellentBM，更具体来说，是http://bbs.nju.edu.cn/bbstcon?board=ExcellentBM&file=M.1065628891.A
+#                           这个帖子，你tmd能不能告诉我0xb9究竟是用什么编码的？
+#版块浏览模式分为主题模式和一般模式，爬网页应该爬主题模式的网页
 
-#按序号从大到小排序，输出到path文件
-#分别为序号，作者，日期，标题，标题url(没有加domain前缀)，人气
-def board(board_id,path,until):
-    if until<0:
-        print(str(until)+' 为负！！')
-        return -1
-    file=open(path,'w',encoding='utf8')
-    url=prefixes['版块']%board_id
+#还有，貌似最开始登陆一个页面时，有时候会先显示一个不相干的网页，然后5秒后跳转到真正的主页
+#我在这里的处理是如果找到“将会在 5 秒钟之后自动跳转到版面”这几个字，那么直接continue循环
+#用re模块
 
-    max_num=-1
-    #网站有防dos措施，所以每次间隔一秒
+#按序号从小到大排序，返回list[list...]
+#传入两个函数参数，judge：判断每条数据，返回True继续执行，返回False停止,conduct：对每条数据进行处理
+#每条信息的内容分别是：序号，作者，日期，标题，标题url，回帖, 人气
+def board(board_id,judge,conduct):
+    url=prefixes['主题模式']%(board_id)
+
+    #网站有防dos措施，所以每次间隔0.5秒
     while True:
         result=crawl(url)
         soup=BeautifulSoup(result,'html5lib')
         tables=soup.find_all('table')
 
-        table3=tables[3]
+        if len(re.findall('将会在 5 秒钟之后自动跳转到版面',result))>0:
+            time.sleep(0.5)
+            continue
+
+        num=-1
+
+        ##HKU版块一个帖子都没有。。。
+        if len(tables)==0:
+            return
+        
+        table3=tables[len(tables)-1]
         trs=table3.find_all('tr')
         #从大到小
         for i in range(len(trs)-1,0,-1):
@@ -188,28 +196,88 @@ def board(board_id,path,until):
                 break
             cur=[]
             num=int(tds[0].string)
-            if num<until:
-                return max_num
-            if max_num==-1:
-                max_num=num
-            cur.append(tds[0].string)
+            
+            cur.append(num)
             cur.append(tds[2].a.string)
-            cur.append(tds[4].nobr.string)
-            cur.append(tds[5].a.string.strip())
-            cur.append(tds[5].a['href'])
-            cur.append(tds[6].font.string)
-            file.write(','.join(cur))
-            file.write('\n')
+            
+            ##没办法，偏偏就是不给年份，然而有些区就是死区，几百年都没个帖子，所以更具体的时间还要点进帖子里面去看
+            ##我发现可以从帖子对应的url中读取到距离1970的时间，看来文件是以时间命名的，啊哈，还是老天眷顾我啊
+            post_time=datetime.datetime.fromtimestamp(int(re.search(r'&file=\w\.(\d+)',tds[4].a['href']).group(1)))
+            cur.append(post_time)
+            cur.append(tds[4].a.string.strip())
+            cur.append(domain+tds[4].a['href'])
+            rp=tds[5].text.split('/')
+            cur.append(int(rp[0]))
+            cur.append(int(rp[1]))
 
-        #之前在页面内找上一页，但是现在知道每一页只有20条帖子（除置顶帖），访问的是有规律的地址，所以把当前页面帖子最小序号减20就可以得到完全不同的新页面
-        if num<=0:
-            return max_num
-        #页面显示序号为1，其实真正的序号为0，就像这样，所以要减21
+            if judge(cur) is False:
+                return
+            else:
+                conduct(cur)
+
+            #到序号1了，前面已经没有数据了
+            if num==1:
+                return
+
+        if num<1:
+            return
+
+        #页面显示序号为1，其实真正的序号为0，就像这样，所以直接是num
         url=prefixes['板块页面']%(board_id,num-21)
         time.sleep(0.5)
-    file.close()
-    return max_num
 
+
+##帖子
+##务必访问主题模式而非一般模式，因为一般模式对每个帖子的回复也要单列一个出来
+##返回list[list...]，格式
+##依次是：发信人id，发信人name，信区，标题，发信站，发帖时间，帖子内容，发帖ip
+def get_post(url):
+    result=crawl(domain+url)
+    post=[]
+    
+    soup=BeautifulSoup(result,'html5lib')
+
+    content=soup.table.textarea.string
+
+    for table in soup.find_all('table'):
+        content=table.textarea.string
+        cur=[]
+        
+        m=re.search(r'发信人: ([^\s]*)[\s]*\(([^\)]*)\)',content)
+        cur.append(m.group(1))
+        cur.append(m.group(2))
+
+        m=re.search(r'信区: ([^\s]*)\s',content)
+        cur.append(m.group(1))
+
+        m=re.search(r'标  题: ([^\n]*)',content)
+        cur.append(m.group(1))
+
+        m=re.search(r'发信站: ([^\s]*)\s*\(([^\)]+)\)\s*(((?!--)[\s\S])*)',content)
+        cur.append(m.group(1))
+        cur.append(m.group(2))
+        #这是帖子的内容，需要parse一下，参考bbs.js，这里只处理了我见过的，可能以后还要扩充
+        a=m.group(3)
+        a = re.subn(r'\033\[[\d;]*(3\d{1})[\d;]*(4\d{1})[\d;]*m', "", a)[0]
+        a = re.subn(r'\033\[[\d;]*(4\d{1})[\d;]*(3\d{1})[\d;]*m', "", a)[0]
+        a = re.subn(r'\033\[[\d;]*(3\d{1}|4\d{1})[\d;]*m', "", a)[0]
+        a = re.subn(r'\033\[0*m', "", a)[0]
+        a = re.subn(r'\033\[[\d;]*(I|u|s|H|m|A|B|C|D)', "", a)[0]
+        a = re.subn(r'\033', "", a)[0]
+        ##处理完毕
+        cur.append(a)
+        
+
+        m=re.search(r'\[FROM: (\d+.\d+.\d+.\d+)\]',content)
+        cur.append(m.group(1))
+
+        post.append(cur)
+
+    return post
+
+
+#####################
+##下面都是用不到的函数##
 
 #所有讨论区，只是为了得到所有版块，现在所有版块的信息已经放在base.py中了
 #只有在版块发生变化时才需要这个函数
@@ -235,3 +303,11 @@ def board_group():
         boards.append(cur)
 
     return boards
+
+#日期帮助函数，只针对小百合的日期显示
+#小百合的日期并没有包含年份，要查看年份需要点进帖子中看
+#版块日期一列没有包含年份，让人头疼，但是可以从帖子href推出时间，所以不再需要这个函数
+def parseDatetime(string,year):
+    c=datetime.datetime.strptime(string,'%b  %d %H:%M')
+    c.replace(year=year)
+    return c
