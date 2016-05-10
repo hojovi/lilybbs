@@ -18,17 +18,17 @@ def judge(item):
 
 def conduct(item):
     print(item)
-##    sql='insert into posts_base_info(boardId,sequence,sender,post_time,title,url,reply,popularity) values(%s,%s,%s,%s,%s,%s,%s,%s)'
-##    s=(b[4],item[0],str(item[1]),item[2],item[3],item[4],item[5],item[6])
-##    cur.execute(sql,s)
+    sql='insert into posts_base_info(boardId,sequence,sender,post_time,title,url,reply,popularity) values(%s,%s,%s,%s,%s,%s,%s,%s)'
+    s=(b[4],item[0],str(item[1]),item[2],item[3],item[4],item[5],item[6])
+    cur.execute(sql,s)
 
 try:
-##    for b in boards:
-##        print(b[0])
-##        board(b[0],judge,conduct)
-##        time.sleep(0.5)
-    b=['Basketball','篮球','体育','cobratoxin',29]
-    board(b[0],judge,conduct)
+    for b in boards:
+        print(b[0])
+        board(b[0],judge,conduct)
+        time.sleep(0.5)
+##    b=['Basketball','篮球','体育','cobratoxin',29]
+##    board(b[0],judge,conduct)
     conn.commit()
 finally:
     cur.close()
