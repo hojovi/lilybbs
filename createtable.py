@@ -52,7 +52,7 @@ posts_base_info_sql='''create table if not exists posts_base_info(
     sender varchar(30) not null,
     post_time datetime not null,
     title varchar(100) not null,
-    url varchar(50) not null,
+    url varchar(100) not null,
     reply int not null,
     popularity int not null,
     foreign key(boardId) references boards(id) on delete cascade on update cascade

@@ -17,6 +17,7 @@ def judge(item):
     return True
 
 def conduct(item):
+    print(item)
     sql='insert into posts_base_info(boardId,sequence,sender,post_time,title,url,reply,popularity) values(%s,%s,%s,%s,%s,%s,%s,%s)'
     s=(b[4],item[0],str(item[1]),item[2],item[3],item[4],item[5],item[6])
     cur.execute(sql,s)
@@ -24,10 +25,10 @@ def conduct(item):
 try:
     for b in boards:
         print(b[0])
-        if b[0].lower()<'hku':
-            continue
         board(b[0],judge,conduct)
         time.sleep(0.5)
+##    b=['Intern','实习','信息','LiuMengli',199]
+##    board(b[0],judge,conduct)
     conn.commit()
 finally:
     cur.close()

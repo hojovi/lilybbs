@@ -161,6 +161,7 @@ def board_hot(board_id):
 #                           这个帖子，你tmd能不能告诉我0xb9究竟是用什么编码的？
 #版块浏览模式分为主题模式和一般模式，爬网页应该爬主题模式的网页
 
+
 #还有，貌似最开始登陆一个页面时，有时候会先显示一个不相干的网页，然后5秒后跳转到真正的主页
 #我在这里的处理是如果找到“将会在 5 秒钟之后自动跳转到版面”这几个字，那么直接continue循环
 #用re模块
@@ -195,8 +196,14 @@ def board(board_id,judge,conduct):
             if tds[0].string is None:
                 break
             cur=[]
-            num=int(tds[0].string)
-            
+            c=int(tds[0].string)
+
+            #主题模式的网页有一个问题，就是本页的第一条跟上一页的最后一条是一样的
+            #加上一个判断条件，如果本次sequence等于上次的sequence，那么跳过
+            if c==num:
+                continue
+            else:
+                num=c
             cur.append(num)
             cur.append(tds[2].a.string)
             
