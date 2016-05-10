@@ -13,7 +13,7 @@ prefixes={
     '精华区查询':'http://bbs.nju.edu.cn/bbsafind?board=%s',   #精华区查询
     '跳转到第几篇':'http://bbs.nju.edu.cn/bbsdoc?board=%s',    #跳转到第几篇，用post提交，表单中要有name=start的text
     '用户':'http://bbs.nju.edu.cn/bbsqry?userid=%s',  #用户
-    '板块页面':'http://bbs.nju.edu.cn/bbstdoc?board=%s&start=%d&type=doc',    #妈的，贼气，向这个网址提交
+    '板块页面':'http://bbs.nju.edu.cn/bbstdoc?board=%s&start=%d',    #妈的，贼气，向这个网址提交
     '类别图片':'http://bbs.nju.edu.cn/images/fb%d.gif'  #每个类别都有对应的图片，对应的url需要这个类别的index
     }
 

@@ -196,14 +196,9 @@ def board(board_id,judge,conduct):
             if tds[0].string is None:
                 break
             cur=[]
-            c=int(tds[0].string)
+            num=int(tds[0].string)
 
-            #主题模式的网页有一个问题，就是本页的第一条跟上一页的最后一条是一样的
-            #加上一个判断条件，如果本次sequence等于上次的sequence，那么跳过
-            if c==num:
-                continue
-            else:
-                num=c
+            
             cur.append(num)
             cur.append(tds[2].a.string)
             
@@ -230,7 +225,9 @@ def board(board_id,judge,conduct):
             return
 
         #页面显示序号为1，其实真正的序号为0，就像这样，所以直接是num
-        url=prefixes['板块页面']%(board_id,num-21)
+        #主题模式的网页有一个问题，就是本页的第一条跟上一页的最后一条是一样的
+        #多减一，减22
+        url=prefixes['板块页面']%(board_id,num-22)
         time.sleep(0.5)
 
 
