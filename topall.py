@@ -12,7 +12,6 @@ cur=conn.cursor()
 try:
     sql='replace into topall(boardId,post_url,title,end_time) values(%s,%s,%s,%s)'
     for a in topall:
-        print(a)
         cur.execute(sql,(board_index[a[2]],a[0],a[1],cur_time))
     conn.commit()
 finally:
