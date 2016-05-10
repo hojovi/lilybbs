@@ -64,20 +64,21 @@ def top10():
 def topall():
     result=crawl(domain+"bbstopall")
     
-    topall={}
+    topall=[]
     soup=BeautifulSoup(result,'html5lib')
     table=soup.table
 
     ##大分类的索引
-    index=-1
+##    index=-1
     
     for tr in table.find_all('tr'):
         if not tr.td.has_attr('colspan') and tr.td.text.strip()=='':
             continue
         elif tr.td.has_attr('colspan') and tr.td['colspan']=='2':
-            index+=1
-            topall[big_category[index]]=[]
-            cur=topall[big_category[index]]
+            pass
+##            index+=1
+##            topall[big_category[index]]=[]
+##            cur=topall[big_category[index]]
         else:
             for td in tr.find_all('td'):
                 post=[]
@@ -85,7 +86,7 @@ def topall():
                 post.append(a[0]['href'])
                 post.append(a[0].string.strip())
                 post.append(a[1].string)
-                cur.append(post)
+                topall.append(post)
                 
     return topall
 

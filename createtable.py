@@ -73,3 +73,18 @@ top10_sql='''create table if not exists top10(
     )engine=innodb default charset=utf8 collate=utf8_general_ci;
 '''
 cur.execute(top10_sql)
+
+topall_sql='''create table if not exists topall(
+    id int primary key auto_increment,
+    boardId int not null,
+    post_url varchar(100) not null unique key,
+    title varchar(100) not null,
+    start_time datetime not null default current_timestamp comment '记录这条帖子出现在十大上的时间',
+    end_time datetime not null default current_timestamp comment '记录这条帖子最后一次出现在十大上的时间',
+    foreign key(boardId) references boards(id) on delete cascade on update cascade
+    )engine=innodb default charset=utf8 collate=utf8_general_ci;
+'''
+cur.execute(top10_sql)
+
+cur.close()
+conn.close()
